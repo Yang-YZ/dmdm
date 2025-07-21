@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Dating Adventure Game</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #222; color: #eee; padding: 2em; }
+        .container { max-width: 600px; margin: auto; background: #333; padding: 2em; border-radius: 8px; }
+        h1 { text-align: center; }
+        .choices { margin-top: 2em; }
+        button { display: block; width: 100%; margin: 0.5em 0; padding: 1em; font-size: 1em; background: #444; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #555; }
+        .story-text { line-height: 1.6; margin-bottom: 2em; }
+        .loading { text-align: center; color: #888; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Dating Adventure</h1>
+        <div class="story-text">{{ segment['text'] }}</div>
+        <form method="post">
+            <div class="choices">
+                {% for choice in segment['choices'] %}
+                    <button type="submit" name="next_node" value="{{ choice['next_node'] }}" data-choice="{{ choice['text'] }}">{{ choice['text'] }}</button>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="choice_text" value="">
+        </form>
+        {% if not segment['choices'] %}
+            <form method="post" action="/restart">
+                <button type="submit">Start New Story</button>
+            </form>
+        {% endif %}
+    </div>
+    
+    <script>
+        document.querySelectorAll('button[data-choice]').forEach(button => {
+            button.addEventListener('click', function(e) {
+                document.querySelector('input[name="choice_text"]').value = this.getAttribute('data-choice');
+            });
+        });
+    </script>
+</body>
+</html> 
