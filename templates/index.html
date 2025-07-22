@@ -2,43 +2,121 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AI Dating Adventure Game</title>
+    <title>Date Me Destroy Me</title>
     <style>
         body { font-family: Arial, sans-serif; background: #222; color: #eee; padding: 2em; }
         .container { max-width: 600px; margin: auto; background: #333; padding: 2em; border-radius: 8px; }
         h1 { text-align: center; }
         .choices { margin-top: 2em; }
-        button { display: block; width: 100%; margin: 0.5em 0; padding: 1em; font-size: 1em; background: #444; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        button { display: block; width: 100%; margin: 0.5em 0; padding: 1em; font-size: 1em; background: #444; color: #fff; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
         button:hover { background: #555; }
-        .story-text { line-height: 1.6; margin-bottom: 2em; }
-        .loading { text-align: center; color: #888; font-style: italic; }
+        button:disabled { background: #2a2a2a; color: #666; cursor: not-allowed; }
+        .story-text { line-height: 1.6; margin-bottom: 2em; white-space: pre-wrap; }
+        .loading { text-align: center; color: #888; font-style: italic; display: none; margin-top: 1em; }
+        #custom-choice-input { width: calc(100% - 85px); padding: 1em; background: #444; color: #fff; border: 1px solid #555; border-radius: 4px; }
+        #custom-choice-btn { width: 80px; margin-left: 5px; display: inline-block; vertical-align: top; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>AI Dating Adventure</h1>
-        <div class="story-text">{{ segment['text'] }}</div>
-        <form method="post">
-            <div class="choices">
-                {% for choice in segment['choices'] %}
-                    <button type="submit" name="next_node" value="{{ choice['next_node'] }}" data-choice="{{ choice['text'] }}">{{ choice['text'] }}</button>
-                {% endfor %}
-            </div>
-            <input type="hidden" name="choice_text" value="">
-        </form>
-        {% if not segment['choices'] %}
-            <form method="post" action="/restart">
-                <button type="submit">Start New Story</button>
+        <h1>Date Me Destroy Me</h1>
+        <div id="story-text-container" class="story-text">{{ segment['text'] }}</div>
+        <div id="choices-container">
+            {% if not segment.get('is_end') %}
+                <div class="choices">
+                    {% for choice in segment['choices'] %}
+                        <button class="choice-btn" data-choice-text="{{ choice['text'] }}">{{ choice['text'] }}</button>
+                    {% endfor %}
+                    <hr>
+                    <div>
+                        <input type="text" id="custom-choice-input" placeholder="Or type your own action...">
+                        <button id="custom-choice-btn">Do it</button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <div class="loading" id="loading-indicator"></div>
+        <div id="end-container" style="display: {% if segment.get('is_end') %}block{% else %}none{% endif %};">
+            <form method="get" action="/restart">
+                <button type="submit">Start a New Story</button>
             </form>
-        {% endif %}
+        </div>
     </div>
     
     <script>
-        document.querySelectorAll('button[data-choice]').forEach(button => {
-            button.addEventListener('click', function(e) {
-                document.querySelector('input[name="choice_text"]').value = this.getAttribute('data-choice');
-            });
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('choice-btn') || e.target.id === 'custom-choice-btn') {
+                e.preventDefault();
+                let choiceText = '';
+                if (e.target.id === 'custom-choice-btn') {
+                    choiceText = document.getElementById('custom-choice-input').value;
+                } else {
+                    choiceText = e.target.dataset.choiceText;
+                }
+
+                if (choiceText.trim() === '') return;
+                
+                sendChoice(choiceText);
+            }
         });
+
+        function sendChoice(choiceText) {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const choicesContainer = document.getElementById('choices-container');
+            const endContainer = document.getElementById('end-container');
+            const allButtons = document.querySelectorAll('#choices-container button');
+            const customInput = document.getElementById('custom-choice-input');
+
+            // Disable UI elements and show loading indicator
+            allButtons.forEach(btn => btn.disabled = true);
+            if (customInput) customInput.disabled = true;
+            loadingIndicator.style.display = 'block';
+
+            fetch('/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ choice_text: choiceText }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('story-text-container').textContent = data.text;
+                choicesContainer.innerHTML = ''; 
+                endContainer.style.display = 'none';
+
+                if (!data.is_end) {
+                    const newChoicesDiv = document.createElement('div');
+                    newChoicesDiv.className = 'choices';
+                    
+                    data.choices.forEach(choice => {
+                        newChoicesDiv.innerHTML += `<button class="choice-btn" data-choice-text="${escapeHTML(choice.text)}">${escapeHTML(choice.text)}</button>`;
+                    });
+                    
+                    newChoicesDiv.innerHTML += `
+                        <hr>
+                        <div>
+                            <input type="text" id="custom-choice-input" placeholder="Or type your own action...">
+                            <button id="custom-choice-btn">Do it</button>
+                        </div>
+                    `;
+                    choicesContainer.appendChild(newChoicesDiv);
+                } else {
+                    endContainer.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('story-text-container').textContent = 'An error occurred. Please refresh and try again.';
+            })
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
+            });
+        }
+
+        function escapeHTML(str) {
+            const p = document.createElement("p");
+            p.textContent = str;
+            return p.innerHTML;
+        }
     </script>
 </body>
-</html> 
+</html>
