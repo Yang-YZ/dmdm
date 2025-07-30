@@ -25,11 +25,13 @@ The player's character profile is:
 Your task is to:
 1.  Write the story from a second-person point of view (e.g., "You walk into the room," not "{character['alias']} walks into the room.").
 2.  Continue the story based on the player's most recent choice and the story so far.
-3.  Create engaging, realistic dialogue and situations.
-4.  Provide 2-3 meaningful choices for the player. Make each choice feel impactful and lead to character development.
-5.  Build suspense and drama that can lead to disastrous endings for the protagonist. When this happens, provide a final text and set "is_end" to true.
-6.  Keep the story text for each response concise, around 1-2 paragraphs.
-7.  The entire response MUST be in {language}.
+3.  Provide 2-3 meaningful choices for the player. Make each choice feel impactful and lead to character development.
+4.  **Badge System**: If the player's choice is particularly kind, helpful, or avoids a conflict, reward them. Set "badge_earned" to a descriptive name (e.g., "Peacemaker", "Good Samaritan"). Otherwise, set "badge_earned" to null.
+5.  **Winning Condition**: If the player has earned 3 or more badges, steer the narrative towards a positive "good ending" where they find a healthy, happy relationship. Set "is_end" to true and provide a final, happy text.
+6.  **Losing Condition**: If the player makes poor choices, steer the narrative toward heartbreak or tragedy. Set "is_end" to true and provide a final, tragic text.
+7.  Build suspense and drama that can lead to disastrous endings for the protagonist. When this happens, provide a final text and set "is_end" to true.
+8.  Keep the story text for each response concise, around 1-2 paragraphs.
+9.  The entire response MUST be in {language}.
 
 Format your response as a single, valid JSON object:
 {{
@@ -39,7 +41,8 @@ Format your response as a single, valid JSON object:
         {{"text": "Choice 2 description"}},
         {{"text": "Choice 3 description"}}
     ],
-    "is_end": false
+    "is_end": false,
+    "badge_earned": "Name of the badge or null"
 }}
 """
     user_prompt = f"""
@@ -86,6 +89,14 @@ def game():
         session['story_context'].append(f"You chose: '{player_choice_text}'")
         
         segment = generate_story_content(session['character'], "\n".join(session['story_context']), player_choice_text, session.get('language', 'English'))
+
+        # Check for and process a new badge
+        badge = segment.get('badge_earned')
+        if badge and badge not in session['badges']:
+            session['badges'].append(badge)
+
+        # Include all earned badges in the response to the frontend
+        segment['all_badges'] = session['badges']
         
         session['current_segment'] = segment
         session['story_context'].append(f"AI response: '{segment['text']}'")
@@ -106,6 +117,7 @@ def game():
         }
         session['language'] = request.form.get('language', 'English')
         session['story_context'] = [f"Your name is {session['character']['alias']}, you are a {session['character']['age']}-year-old {session['character']['role']}, and your adventure is beginning."]
+        session['badges'] = [] # Initialize empty list for badges
         
         segment = generate_story_content(session['character'], session['story_context'][0], "start_game", session['language'])
         
