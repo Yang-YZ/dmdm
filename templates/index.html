@@ -15,11 +15,17 @@
         .loading { text-align: center; color: #888; font-style: italic; display: none; margin-top: 1em; }
         #custom-choice-input { width: calc(100% - 85px); padding: 1em; background: #444; color: #fff; border: 1px solid #555; border-radius: 4px; }
         #custom-choice-btn { width: 80px; margin-left: 5px; display: inline-block; vertical-align: top; }
+
+        /* New styles for badges */
+        #badge-container { margin-top: 2em; padding-top: 1em; border-top: 1px solid #444; }
+        .badge { display: inline-block; background: #cda434; color: #222; padding: 5px 10px; margin: 5px; border-radius: 15px; font-size: 0.9em; }
+        #badge-notification { text-align: center; color: #cda434; font-weight: bold; display: none; margin-bottom: 1em; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Date Me Destroy Me</h1>
+        <div id="badge-notification"></div>
         <div id="story-text-container" class="story-text">{{ segment['text'] }}</div>
         <div id="choices-container">
             {% if not segment.get('is_end') %}
@@ -40,6 +46,12 @@
             <form method="get" action="/restart">
                 <button type="submit">Start a New Story</button>
             </form>
+        </div>
+        <div id="badge-container">
+            <h3>Your Badges</h3>
+            <div id="badge-list">
+                <!-- Badges will be populated by JavaScript -->
+            </div>
         </div>
     </div>
     
@@ -79,7 +91,30 @@
             })
             .then(response => response.json())
             .then(data => {
+                // Update story text
                 document.getElementById('story-text-container').textContent = data.text;
+
+                // Show badge notification if a new one was earned
+                const badgeNotification = document.getElementById('badge-notification');
+                if (data.badge_earned) {
+                    badgeNotification.textContent = `✨ You earned the "${data.badge_earned}" badge! ✨`;
+                    badgeNotification.style.display = 'block';
+                } else {
+                    badgeNotification.style.display = 'none';
+                }
+
+                // Update the list of all badges
+                const badgeList = document.getElementById('badge-list');
+                badgeList.innerHTML = '';
+                if (data.all_badges && data.all_badges.length > 0) {
+                    data.all_badges.forEach(badge => {
+                        badgeList.innerHTML += `<span class="badge">${badge}</span>`;
+                    });
+                } else {
+                    badgeList.innerHTML = 'None yet.';
+                }
+
+                // Clear old choices and hide end container
                 choicesContainer.innerHTML = ''; 
                 endContainer.style.display = 'none';
 
